@@ -7,9 +7,18 @@
 
 #![feature(abi_x86_interrupt)]
 
+#![feature(alloc_error_handler)] // at the top of the file
+
+#[alloc_error_handler]
+fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
+    panic!("allocation error: {:?}", layout)
+}
+
 #[macro_use] extern crate lazy_static;
 
 extern crate rlibc;
+extern crate core;
+extern crate alloc;
 
 use core::panic::PanicInfo;
 
@@ -17,6 +26,8 @@ pub mod serial;
 pub mod vga_buffer;
 pub mod interrupts;
 pub mod gdt;
+pub mod memory;
+pub mod allocator;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Generic functions
@@ -90,10 +101,15 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
     loop {}
 }
 
+#[cfg(test)]
+use bootloader::{BootInfo, entry_point};
+
+#[cfg(test)]
+entry_point!(test_kernel_main);
+
 /// Entry point for `cargo test`
 #[cfg(test)]
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+fn test_kernel_main(_boot_info: &'static BootInfo) -> ! {
     init();
     test_main();
     loop {}
