@@ -34,7 +34,8 @@ dependencies = [
  "pc-keyboard",
  "pic8259_simple",
  "rlibc",
- "spin",
+ "slab_allocator",
+ "spin 0.5.2",
  "uart_16550",
  "volatile",
  "x86_64",
@@ -46,7 +47,7 @@ version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
 dependencies = [
- "spin",
+ "spin 0.5.2",
 ]
 
 [[package]]
@@ -93,6 +94,21 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "slab_allocator"
+version = "0.3.5"
+source = "git+https://github.com/Lucky4Luuk/slab_allocator.git#83608f8c20e01bb23633aa836f155244d1a77b26"
+dependencies = [
+ "linked_list_allocator",
+ "spin 0.4.10",
+]
+
+[[package]]
+name = "spin"
+version = "0.4.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ceac490aa12c567115b40b7b7fceca03a6c9d53d5defea066123debc83c5dc1f"
 
 [[package]]
 name = "spin"

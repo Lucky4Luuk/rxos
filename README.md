@@ -3,6 +3,9 @@
 ## Known issues
 - [ ] Double exceptions need to be fixed, they do not properly trigger.
 
+## TODO
+- [ ] Replace the current linked list allocator with a slab allocator.
+
 ## Building
 ### Windows
 `cargo build`

@@ -5,12 +5,14 @@ use x86_64::{
     VirtAddr,
 };
 
-use linked_list_allocator::LockedHeap;
+use spin::Mutex;
+
+// use linked_list_allocator::LockedHeap;
+use slab_allocator::LockedHeap;
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
-pub const HEAP_SIZE: usize = 100 * 1024; // 100 KiB
+pub const HEAP_SIZE: usize = 128 * 1024; // 128 KiB
 
-/// Linked list allocator
 #[global_allocator]
 static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
@@ -38,7 +40,7 @@ pub fn init_heap(
     }
 
     unsafe {
-        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
+        ALLOCATOR.init(HEAP_START, HEAP_SIZE);
     }
 
     Ok(())

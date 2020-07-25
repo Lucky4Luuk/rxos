@@ -53,7 +53,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     };
 
     kernel::init();
-    kernel::allocator::init_heap(&mut mapper, &mut frame_allocator);
+    kernel::allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed!");
 
     // allocate a number on the heap
     let heap_value = Box::new(41);

@@ -5,12 +5,15 @@
 #![test_runner(kernel::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+use bootloader::{BootInfo, entry_point};
+
 use core::panic::PanicInfo;
 
 use kernel::println;
 
-#[no_mangle] // don't mangle the name of this function
-pub extern "C" fn _start() -> ! {
+entry_point!(main);
+
+fn main(_boot_info: &'static BootInfo) -> ! {
     test_main();
 
     loop {}

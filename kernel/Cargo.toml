@@ -18,6 +18,8 @@ pc-keyboard = "0.5.0"
 
 #Heap allocators
 linked_list_allocator = "0.8.0"
+# slab_allocator = "0.3.5"
+slab_allocator = { git = "https://github.com/Lucky4Luuk/slab_allocator.git" }
 
 [dependencies.lazy_static]
 version = "1.0"
