@@ -44,7 +44,7 @@ pub extern "C" fn _start() -> ! {
     //BREAKPOINT
     // x86_64::instructions::interrupts::int3();
 
-    //Double fault
+    //Page fault
     // unsafe {
     //     *(0xdeadbeef as *mut u64) = 42;
     // };
@@ -59,5 +59,6 @@ pub extern "C" fn _start() -> ! {
     test_main();
 
     println!("It did not crash!");
-    loop {}
+    // loop {}
+    kernel::hlt_loop();
 }
