@@ -6,8 +6,9 @@
 #![reexport_test_harness_main = "test_main"]
 
 #![feature(abi_x86_interrupt)]
+#![feature(wake_trait)]
 
-#![feature(alloc_error_handler)] // at the top of the file
+#![feature(alloc_error_handler)]
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
@@ -28,6 +29,7 @@ pub mod interrupts;
 pub mod gdt;
 pub mod memory;
 pub mod allocator;
+pub mod task; // Basic implementation of cooperative multitasking
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Generic functions

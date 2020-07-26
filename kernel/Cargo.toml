@@ -25,12 +25,28 @@ slab_allocator = { git = "https://github.com/Lucky4Luuk/slab_allocator.git" }
 version = "1.0"
 features = ["spin_no_std"]
 
+[dependencies.crossbeam-queue]
+version = "0.2.1"
+default-features = false
+features = ["alloc"]
+
+[dependencies.conquer-once]
+version = "0.2.0"
+default-features = false
+
+[dependencies.futures-util]
+version = "0.3.4"
+default-features = false
+features = ["alloc"]
+
+# Profiles
 [profile.dev]
 panic = "abort"
 
 [profile.release]
 panic = "abort"
 
+# Qemu/running stuff
 [package.metadata.bootimage]
 test-args = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
