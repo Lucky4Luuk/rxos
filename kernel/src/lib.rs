@@ -8,6 +8,13 @@
 #![feature(abi_x86_interrupt)]
 #![feature(wake_trait)]
 
+#![feature(raw)]
+#![feature(never_type)]
+#![feature(naked_functions)]
+#![feature(option_expect_none)]
+#![feature(global_asm)]
+#![feature(llvm_asm)]
+
 #![feature(alloc_error_handler)]
 
 #[alloc_error_handler]
@@ -30,6 +37,7 @@ pub mod gdt;
 pub mod memory;
 pub mod allocator;
 pub mod task; // Basic implementation of cooperative multitasking
+pub mod threading; // Basic implementation of threading
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Generic functions

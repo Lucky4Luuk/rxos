@@ -20,6 +20,12 @@ use kernel::{
     task::executor::Executor,
     task::Task,
     task::keyboard,
+
+    threading::{
+        self,
+        thread::Thread,
+        with_scheduler,
+    },
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -59,14 +65,56 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     kernel::init();
     kernel::allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed!");
 
+    #[cfg(test)]
+    test_main();
+
+    let idle_thread = Thread::create(idle_thread, 2, &mut mapper, &mut frame_allocator).unwrap();
+    with_scheduler(|s| s.set_idle_thread(idle_thread));
+
+    for _ in 0..10 {
+        let thread = Thread::create(thread_entry, 2, &mut mapper, &mut frame_allocator).unwrap();
+        with_scheduler(|s| s.add_new_thread(thread));
+    }
+    let thread =
+        Thread::create_from_closure(|| thread_entry(), 2, &mut mapper, &mut frame_allocator)
+            .unwrap();
+    with_scheduler(|s| s.add_new_thread(thread));
+
+    // let keyboard_thread = Thread::create(thread_keyboard, 2, &mut mapper, &mut frame_allocator).unwrap();
+    // with_scheduler(|s| s.add_new_thread(keyboard_thread));
+
+    println!("It did not crash!");
+    // loop {}
+    // kernel::hlt_loop();
+    thread_entry();
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Simple threads
+///////////////////////////////////////////////////////////////////////////////////////////////////
+fn idle_thread() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+        threading::yield_now();
+    }
+}
+
+fn thread_entry() -> ! {
+    let thread_id = with_scheduler(|s| s.current_thread_id()).as_u64();
+    for _ in 0..=thread_id {
+        print!("{}", thread_id);
+        x86_64::instructions::hlt();
+        threading::yield_now();
+    }
+    threading::exit_thread();
+}
+
+fn thread_keyboard() -> ! {
+    let thread_id = with_scheduler(|s| s.current_thread_id()).as_u64();
+
     let mut executor = Executor::new();
     executor.spawn(Task::new(keyboard::print_keypresses()));
     executor.run();
 
-    #[cfg(test)]
-    test_main();
-
-    println!("It did not crash!");
-    // loop {}
-    kernel::hlt_loop();
+    threading::exit_thread();
 }
