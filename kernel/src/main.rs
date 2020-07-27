@@ -65,6 +65,20 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     kernel::init();
     kernel::allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed!");
 
+    let acpi_data = {
+        let mut acpi_handler = kernel::acpi_controller::AcpiMemoryHandler;
+        unsafe { acpi::search_for_rsdp_bios(&mut acpi_handler) }
+    };
+
+    match acpi_data {
+        Ok(data) => {
+            println!("Found ACPI data!");
+        },
+        Err(err) => {
+            println!("Did not find ACPI data :(");
+        },
+    }
+
     #[cfg(test)]
     test_main();
 

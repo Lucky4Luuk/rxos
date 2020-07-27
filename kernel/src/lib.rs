@@ -16,6 +16,7 @@
 #![feature(llvm_asm)]
 
 #![feature(alloc_error_handler)]
+#![feature(allocator_api)]
 
 #[alloc_error_handler]
 fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
@@ -38,6 +39,7 @@ pub mod memory;
 pub mod allocator;
 pub mod task; // Basic implementation of cooperative multitasking
 pub mod threading; // Basic implementation of threading
+pub mod acpi_controller;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Generic functions
