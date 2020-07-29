@@ -6,6 +6,7 @@
 #![test_runner(kernel::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+#[macro_use] extern crate log;
 extern crate alloc;
 
 use core::panic::PanicInfo;
@@ -54,50 +55,64 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     use kernel::memory::BootInfoFrameAllocator;
     use x86_64::{structures::paging::MapperAllSizes, VirtAddr};
 
-    println!("Hello world!");
+    kernel::logger::init().expect("Failed to load the kernel logger!");
+
+    debug!("Hello world!");
+
+    let regions = boot_info.memory_map.iter();
+    let addr_ranges = regions.map(|r| r.range.start_addr()..r.range.end_addr());
+    let frame_addresses = addr_ranges.flat_map(|r| r.step_by(4096));
+    let available_memory = frame_addresses.count() * 4;
+    debug!("Memory available: {} KiB", available_memory);
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mut mapper = unsafe { kernel::memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe {
-        BootInfoFrameAllocator::init(&boot_info.memory_map)
-    };
+    {
+        let mut mapper = kernel::memory::MAPPER.lock();
+        *mapper = unsafe { Some(kernel::memory::init(phys_mem_offset)) };
+        let mut frame_allocator = kernel::memory::FRAME_ALLOCATOR.lock();
+        *frame_allocator = unsafe {
+            Some(BootInfoFrameAllocator::init(&boot_info.memory_map))
+        };
+        debug!("Mapper and frame allocator created!");
+    }
+
+    let mut mapper = kernel::memory::MAPPER.lock();
+    let mut frame_allocator = kernel::memory::FRAME_ALLOCATOR.lock();
 
     kernel::init();
-    kernel::allocator::init_heap(&mut mapper, &mut frame_allocator).expect("Heap initialization failed!");
+    kernel::allocator::init_heap(mapper.as_mut().unwrap(), frame_allocator.as_mut().unwrap()).expect("Heap initialization failed!");
 
-    let acpi_data = {
-        let mut acpi_handler = kernel::acpi_controller::AcpiMemoryHandler;
-        unsafe { acpi::search_for_rsdp_bios(&mut acpi_handler) }
-    };
+    let acpi_controller = kernel::acpi_controller::AcpiController::new(phys_mem_offset.as_u64());
 
-    match acpi_data {
-        Ok(data) => {
-            println!("Found ACPI data!");
+    match acpi_controller {
+        Ok(controller) => {
+            debug!("Found ACPI data!");
         },
         Err(err) => {
-            println!("Did not find ACPI data :(");
+            debug!("Did not find ACPI data :(");
+            debug!("Reason: {:?}", err);
         },
     }
 
     #[cfg(test)]
     test_main();
 
-    let idle_thread = Thread::create(idle_thread, 2, &mut mapper, &mut frame_allocator).unwrap();
+    let idle_thread = Thread::create(idle_thread, 2, mapper.as_mut().unwrap(), frame_allocator.as_mut().unwrap()).unwrap();
     with_scheduler(|s| s.set_idle_thread(idle_thread));
 
     for _ in 0..10 {
-        let thread = Thread::create(thread_entry, 2, &mut mapper, &mut frame_allocator).unwrap();
+        let thread = Thread::create(thread_entry, 2, mapper.as_mut().unwrap(), frame_allocator.as_mut().unwrap()).unwrap();
         with_scheduler(|s| s.add_new_thread(thread));
     }
     let thread =
-        Thread::create_from_closure(|| thread_entry(), 2, &mut mapper, &mut frame_allocator)
+        Thread::create_from_closure(|| thread_entry(), 2, mapper.as_mut().unwrap(), frame_allocator.as_mut().unwrap())
             .unwrap();
     with_scheduler(|s| s.add_new_thread(thread));
 
     // let keyboard_thread = Thread::create(thread_keyboard, 2, &mut mapper, &mut frame_allocator).unwrap();
     // with_scheduler(|s| s.add_new_thread(keyboard_thread));
 
-    println!("It did not crash!");
+    debug!("It did not crash!");
     // loop {}
     // kernel::hlt_loop();
     thread_entry();

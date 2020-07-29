@@ -5,6 +5,8 @@ authors = ["Luuk van Oijen <lazyluuk.channel@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+log = "0.4.11"
+
 rlibc = "1.0.0"
 bootloader = { version = "0.9.8", features = ["map_physical_memory"] }
 volatile = "0.2.6"
@@ -59,5 +61,6 @@ test-success-exit-code = 33         # (0x10 << 1) | 1
 test-timeout = 300                  # in seconds
 
 run-args = [
-    "-m", "256M"
+    "-m", "256M",
+    # "-M", "q35",
 ]

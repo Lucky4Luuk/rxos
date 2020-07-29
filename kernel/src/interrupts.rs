@@ -20,6 +20,8 @@ pub static PICS: spin::Mutex<ChainedPics> =
 pub enum InterruptIndex {
     Timer = PIC_1_OFFSET,
     Keyboard = PIC_1_OFFSET + 1,
+
+    ACPI = PIC_2_OFFSET + 1,
 }
 
 impl InterruptIndex {
@@ -51,6 +53,7 @@ lazy_static! {
         // PIC interrupts
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+        idt[InterruptIndex::ACPI.as_usize()].set_handler_fn(acpi_interrupt_handler);
 
         idt
     };
@@ -75,16 +78,6 @@ extern "x86-interrupt" fn double_fault_handler(stack_frame: &mut InterruptStackF
 }
 
 /// Page fault handler
-
-/// Timer interrupt handler
-extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-    print!(".");
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-    }
-}
-
 extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut InterruptStackFrame, error_code: PageFaultErrorCode) {
     use x86_64::registers::control::Cr2;
 
@@ -98,6 +91,15 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut InterruptStackFra
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // PIC handlers
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+/// Timer interrupt handler
+extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    // print!(".");
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+    }
+}
+
 /// Keyboard interrupt handler
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
     use x86_64::instructions::port::Port;
@@ -109,6 +111,14 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut Interrup
     unsafe {
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    }
+}
+
+extern "x86-interrupt" fn acpi_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("ACPI INTERRUPT!");
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
     }
 }
 

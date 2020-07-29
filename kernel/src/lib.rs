@@ -24,12 +24,15 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 }
 
 #[macro_use] extern crate lazy_static;
+#[macro_use] extern crate log;
 
 extern crate rlibc;
 extern crate core;
 extern crate alloc;
 
 use core::panic::PanicInfo;
+
+pub mod logger; // Simple kernel logger
 
 pub mod serial;
 pub mod vga_buffer;

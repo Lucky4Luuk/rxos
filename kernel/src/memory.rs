@@ -196,3 +196,14 @@ fn translate_addr_inner(addr: VirtAddr, physical_memory_offset: VirtAddr)
     // calculate the physical address by adding the page offset
     Some(frame.start_address() + u64::from(addr.page_offset()))
 }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Singleton mapper and frame allocator
+///////////////////////////////////////////////////////////////////////////////////////////////////
+lazy_static! {
+    pub static ref MAPPER: spin::Mutex<Option<OffsetPageTable<'static>>> = spin::Mutex::new(None);
+}
+
+lazy_static! {
+    pub static ref FRAME_ALLOCATOR: spin::Mutex<Option<BootInfoFrameAllocator>> = spin::Mutex::new(None);
+}

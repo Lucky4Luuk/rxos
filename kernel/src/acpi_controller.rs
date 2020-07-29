@@ -1,27 +1,55 @@
 use acpi::{
     handler::{AcpiHandler, PhysicalMapping},
+    Acpi, AcpiError,
+};
+
+use x86_64::{
+    structures::paging::{
+        mapper,
+        PageTable,
+        OffsetPageTable,
+        Page,
+        PageSize,
+        PhysFrame,
+        Mapper,
+        Size4KiB,
+        FrameAllocator,
+        PageTableFlags as Flags,
+    },
+    VirtAddr,
+    PhysAddr,
 };
 
 use crate::println;
 
-use crate::memory::BootInfoFrameAllocator;
-use x86_64::structures::paging::{
-    mapper,
-    Mapper,
-    OffsetPageTable,
-    PageSize,
-    Size4KiB,
-    FrameAllocator,
-    frame::PhysFrame,
-    page::Page,
-    PageTableFlags as Flags,
-};
-use x86_64::addr::{PhysAddr, VirtAddr};
-
 use core::ptr::NonNull;
 use alloc::alloc::{Layout, alloc, dealloc};
 
-pub struct AcpiMemoryHandler;
+pub struct AcpiMemoryHandler {
+    pub phys_mem_offset: u64,
+}
+
+pub struct AcpiController {
+    pub phys_mem_offset: u64,
+    pub acpi: Acpi,
+}
+
+impl AcpiController {
+    // TODO: Error handling
+    pub fn new(phys_mem_offset: u64) -> Result<Self, AcpiError> {
+        let acpi_data = {
+            let mut acpi_handler = AcpiMemoryHandler {
+                phys_mem_offset: phys_mem_offset,
+            };
+            unsafe { acpi::search_for_rsdp_bios(&mut acpi_handler) }
+        }?;
+
+        Ok(Self {
+            phys_mem_offset: phys_mem_offset,
+            acpi: acpi_data,
+        })
+    }
+}
 
 impl AcpiHandler for AcpiMemoryHandler {
     unsafe fn map_physical_region<T>(
@@ -33,16 +61,11 @@ impl AcpiHandler for AcpiMemoryHandler {
         // The size of the allocated memory needs to be the same as or bigger than size_of::<T>()
         // `size` should contain the size of T in bytes, I think, so I'll simply allocate that
 
-        println!("phys_addr: 0x{:x}", physical_address);
-
-        let phys_addr = PhysAddr::new(physical_address as u64);
-        let layout = Layout::from_size_align(size, 4096).expect("Failed to create layout!");
-        let virt_ptr = alloc(layout);
-        let virt = VirtAddr::from_ptr(virt_ptr);
+        let virtual_start = self.phys_mem_offset + physical_address as u64;
 
         PhysicalMapping {
             physical_start: physical_address,
-            virtual_start: NonNull::new(virt_ptr.cast()).expect("Failed to create NonNull ptr!"),
+            virtual_start: core::ptr::NonNull::new_unchecked(virtual_start as *mut u8 as *mut T),
             region_length: size,
             mapped_length: size,
         }
@@ -50,16 +73,5 @@ impl AcpiHandler for AcpiMemoryHandler {
 
     fn unmap_physical_region<T>(&mut self, region: PhysicalMapping<T>) {
         // Unmap the given physical region
-
-        let phys_addr = region.physical_start;
-        let virt_ptr = region.virtual_start.as_ptr();
-        let size = region.region_length;
-
-        let layout = Layout::from_size_align(size, 4096).expect("Failed to create layout!");
-        unsafe {
-            dealloc(virt_ptr.cast(), layout);
-        }
-
-        //Absolutely no clue what to do here lol
     }
 }
