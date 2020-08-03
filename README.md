@@ -4,7 +4,7 @@
 - [ ] Double exceptions need to be fixed, they do not properly trigger.
 
 ## TODO
-- [ ] Replace the current linked list allocator with a slab allocator.
+- [ ] Replace the current linked list allocator with a slab allocator. This is mostly done, but the slab allocator throws an error when trying to parse the DSDT table.
 
 ## Building
 ### Windows

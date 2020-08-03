@@ -11,6 +11,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "aml"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8fd8d00fa73a99e58caee5996adc0f469497a8112781a066e609d689e35dd67"
+dependencies = [
+ "bit_field 0.10.0",
+ "byteorder",
+ "log",
+]
+
+[[package]]
 name = "autocfg"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -39,6 +50,12 @@ name = "bootloader"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ad686b9b47363de7d36c05fb6885f17d08d0f2d15b1bc782a101fe3c94a2c7c"
+
+[[package]]
+name = "byteorder"
+version = "1.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 
 [[package]]
 name = "cfg-if"
@@ -117,8 +134,10 @@ name = "kernel"
 version = "0.1.0"
 dependencies = [
  "acpi",
+ "aml",
  "bootloader",
  "conquer-once",
+ "cpuio",
  "crossbeam-queue",
  "futures-util",
  "lazy_static",

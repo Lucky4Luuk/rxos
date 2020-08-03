@@ -28,7 +28,7 @@ fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
 
 extern crate rlibc;
 extern crate core;
-extern crate alloc;
+#[macro_use] extern crate alloc;
 
 use core::panic::PanicInfo;
 
@@ -43,6 +43,8 @@ pub mod allocator;
 pub mod task; // Basic implementation of cooperative multitasking
 pub mod threading; // Basic implementation of threading
 pub mod acpi_controller;
+pub mod apic;
+pub mod hardware;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Generic functions
@@ -60,8 +62,7 @@ pub fn init() {
     gdt::init();
     interrupts::init_idt();
 
-    unsafe { interrupts::PICS.lock().initialize() };
-    x86_64::instructions::interrupts::enable();
+    // unsafe { interrupts::PICS.lock().initialize() };
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

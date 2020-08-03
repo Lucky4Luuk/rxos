@@ -7,8 +7,8 @@ use x86_64::{
 
 use spin::Mutex;
 
-// use linked_list_allocator::LockedHeap;
-use slab_allocator::LockedHeap;
+use linked_list_allocator::LockedHeap;
+// use slab_allocator::LockedHeap;
 
 pub const HEAP_START: usize = 0x_4444_4444_0000;
 pub const HEAP_SIZE: usize = 128 * 1024; // 128 KiB
@@ -40,7 +40,7 @@ pub fn init_heap(
     }
 
     unsafe {
-        ALLOCATOR.init(HEAP_START, HEAP_SIZE);
+        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
     }
 
     Ok(())

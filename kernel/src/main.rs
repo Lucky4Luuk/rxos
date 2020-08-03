@@ -66,6 +66,7 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     debug!("Memory available: {} KiB", available_memory);
 
     let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
+    kernel::memory::update_physical_memory_offset(phys_mem_offset.as_u64());
     {
         let mut mapper = kernel::memory::MAPPER.lock();
         *mapper = unsafe { Some(kernel::memory::init(phys_mem_offset)) };
@@ -87,12 +88,19 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     match acpi_controller {
         Ok(controller) => {
             debug!("Found ACPI data!");
+            controller.debug_print();
+
+            controller.get_cpu();
+            kernel::apic::update_ioapic_addr(*controller.get_io_apic_addr().iter().next().expect("Failed to get the first IOAPIC addr!") as u64);
         },
         Err(err) => {
             debug!("Did not find ACPI data :(");
             debug!("Reason: {:?}", err);
         },
     }
+
+    kernel::interrupts::initialize_apic();
+    x86_64::instructions::interrupts::enable();
 
     #[cfg(test)]
     test_main();

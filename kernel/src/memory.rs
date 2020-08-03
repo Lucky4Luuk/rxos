@@ -198,7 +198,22 @@ fn translate_addr_inner(addr: VirtAddr, physical_memory_offset: VirtAddr)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-// Singleton mapper and frame allocator
+// Utility functions
+///////////////////////////////////////////////////////////////////////////////////////////////////
+/// TODO: Ensure address alignment
+pub unsafe fn memory_read_32(addr: u64) -> u32 {
+    let phys_addr = PHYSICAL_MEMORY_OFFSET.load(Ordering::Relaxed) + addr;
+    core::ptr::read(phys_addr as *mut u32)
+}
+
+/// TODO: Ensure address alignment
+pub unsafe fn memory_write_32(addr: u64, value: u32) {
+    let phys_addr = PHYSICAL_MEMORY_OFFSET.load(Ordering::Relaxed) + addr;
+    core::ptr::write(phys_addr as *mut u32, value);
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+// Singleton mapper, frame allocator and physical memory offset
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 lazy_static! {
     pub static ref MAPPER: spin::Mutex<Option<OffsetPageTable<'static>>> = spin::Mutex::new(None);
@@ -206,4 +221,10 @@ lazy_static! {
 
 lazy_static! {
     pub static ref FRAME_ALLOCATOR: spin::Mutex<Option<BootInfoFrameAllocator>> = spin::Mutex::new(None);
+}
+
+use core::sync::atomic::{AtomicU64, Ordering};
+static PHYSICAL_MEMORY_OFFSET: AtomicU64 = AtomicU64::new(0);
+pub fn update_physical_memory_offset(phys_mem_offset: u64) {
+    PHYSICAL_MEMORY_OFFSET.store(phys_mem_offset, Ordering::Relaxed);
 }

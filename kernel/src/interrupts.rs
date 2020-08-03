@@ -4,7 +4,7 @@ use x86_64::structures::idt::PageFaultErrorCode;
 use pic8259_simple::ChainedPics;
 use spin;
 
-use crate::{print, println, gdt, hlt_loop};
+use crate::{print, println, gdt, hlt_loop, apic};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // PIC
@@ -12,16 +12,36 @@ use crate::{print, println, gdt, hlt_loop};
 pub const PIC_1_OFFSET: u8 = 32;
 pub const PIC_2_OFFSET: u8 = PIC_1_OFFSET + 8;
 
-pub static PICS: spin::Mutex<ChainedPics> =
-    spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
+pub const PIC_OFFSET: u8 = 32;
+
+// pub static PICS: spin::Mutex<ChainedPics> =
+//     spin::Mutex::new(unsafe { ChainedPics::new(PIC_1_OFFSET, PIC_2_OFFSET) });
+
+pub fn initialize_apic() {
+    unsafe {
+        apic::disable_pic();
+        apic::enable_apic();
+
+        crate::hardware::rtc::enable_rtc();
+
+        // Default IRQs
+        apic::ioapic_set_irq(0, 0, InterruptIndex::Timer.as_u8());
+        apic::ioapic_set_irq(1, 0, InterruptIndex::Keyboard.as_u8());
+        apic::ioapic_set_irq(8, 0, InterruptIndex::RTC.as_u8());
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum InterruptIndex {
-    Timer = PIC_1_OFFSET,
-    Keyboard = PIC_1_OFFSET + 1,
+    Timer = PIC_OFFSET,
+    Keyboard = PIC_OFFSET + 1,
 
-    ACPI = PIC_2_OFFSET + 1,
+    RTC = PIC_OFFSET + 8,
+    ACPI = PIC_OFFSET + 9,
+
+    PrimaryATA = PIC_OFFSET + 14,
+    SecondaryATA = PIC_OFFSET + 15,
 }
 
 impl InterruptIndex {
@@ -53,6 +73,7 @@ lazy_static! {
         // PIC interrupts
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+        idt[InterruptIndex::RTC.as_usize()].set_handler_fn(rtc_interrupt_handler);
         idt[InterruptIndex::ACPI.as_usize()].set_handler_fn(acpi_interrupt_handler);
 
         idt
@@ -70,6 +91,7 @@ pub fn init_idt() {
 /// Breakpoint handler
 extern "x86-interrupt" fn breakpoint_handler(stack_frame: &mut InterruptStackFrame) {
     println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+    // unsafe { apic::send_apic_eoi(0); }
 }
 
 /// Double fault handler
@@ -93,32 +115,54 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut InterruptStackFra
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 /// Timer interrupt handler
 extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
-    // print!(".");
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
-    }
+    print!(".");
+    // unsafe {
+    //     PICS.lock()
+    //         .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+    // }
+    unsafe { apic::apic_send_eoi(0); }
 }
 
 /// Keyboard interrupt handler
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
     use x86_64::instructions::port::Port;
 
+    unsafe { apic::apic_send_eoi(0); }
+
     let mut port = Port::new(0x60);
     let scancode: u8 = unsafe { port.read() };
     crate::task::keyboard::add_scancode(scancode);
 
-    unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
-    }
+    debug!("Keyboard interrupt!");
+
+    // unsafe {
+    //     PICS.lock()
+    //         .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    // }
+
+    // unsafe { apic::apic_send_eoi(0); }
 }
 
 extern "x86-interrupt" fn acpi_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
     println!("ACPI INTERRUPT!");
+
+    // unsafe {
+    //     PICS.lock()
+    //         .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+    // }
+
+    unsafe { apic::apic_send_eoi(0); }
+}
+
+extern "x86-interrupt" fn rtc_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    //TODO: Probably want to use this irq to increment a "tick" global variable
+    //      This way, I can pretty easily implement a sleep function
     unsafe {
-        PICS.lock()
-            .notify_end_of_interrupt(InterruptIndex::Timer.as_u8());
+        apic::apic_send_eoi(0);
+
+        use cpuio::{inb, outb};
+        outb(0x0C, 0x70);
+        inb(0x71);
     }
 }
 
