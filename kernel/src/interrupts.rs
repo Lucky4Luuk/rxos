@@ -20,14 +20,18 @@ pub const PIC_OFFSET: u8 = 32;
 pub fn initialize_apic() {
     unsafe {
         apic::disable_pic();
-        apic::enable_apic();
 
-        crate::hardware::rtc::enable_rtc();
+        crate::hardware::rtc::enable_rtc(6); //Default value of 1024 hz
+
+        apic::enable_apic(0);
 
         // Default IRQs
-        apic::ioapic_set_irq(0, 0, InterruptIndex::Timer.as_u8());
+        // apic::ioapic_set_irq(0, 0, InterruptIndex::Timer.as_u8());
         apic::ioapic_set_irq(1, 0, InterruptIndex::Keyboard.as_u8());
+        apic::ioapic_set_irq(7, 0, InterruptIndex::Spurious.as_u8());
         apic::ioapic_set_irq(8, 0, InterruptIndex::RTC.as_u8());
+
+        apic::apic_set_timer(0);
     }
 }
 
@@ -37,6 +41,7 @@ pub enum InterruptIndex {
     Timer = PIC_OFFSET,
     Keyboard = PIC_OFFSET + 1,
 
+    Spurious = PIC_OFFSET + 7,
     RTC = PIC_OFFSET + 8,
     ACPI = PIC_OFFSET + 9,
 
@@ -69,10 +74,16 @@ lazy_static! {
                 .set_stack_index(gdt::DOUBLE_FAULT_IST_INDEX);
         }
         idt.page_fault.set_handler_fn(page_fault_handler);
+        idt.divide_error.set_handler_fn(divide_error_handler);
+        idt.general_protection_fault.set_handler_fn(general_protection_fault_handler);
+        idt.stack_segment_fault.set_handler_fn(stack_segment_fault_handler);
+        idt.invalid_tss.set_handler_fn(invalid_tss_handler);
+        idt.segment_not_present.set_handler_fn(segment_not_present_handler);
 
         // PIC interrupts
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);
         idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
+        idt[InterruptIndex::Spurious.as_usize()].set_handler_fn(spurious_interrupt_handler);
         idt[InterruptIndex::RTC.as_usize()].set_handler_fn(rtc_interrupt_handler);
         idt[InterruptIndex::ACPI.as_usize()].set_handler_fn(acpi_interrupt_handler);
 
@@ -108,6 +119,31 @@ extern "x86-interrupt" fn page_fault_handler(stack_frame: &mut InterruptStackFra
     println!("Error Code: {:?}", error_code);
     println!("{:#?}", stack_frame);
     hlt_loop();
+}
+
+/// Divide error
+extern "x86-interrupt" fn divide_error_handler(_stack_frame: &mut InterruptStackFrame) {
+    println!("Divide error!");
+}
+
+/// General Protection Fault
+extern "x86-interrupt" fn general_protection_fault_handler(_stack_frame: &mut InterruptStackFrame, error_code: u64) {
+    println!("General Protection Fault!");
+}
+
+/// Stack segment fault
+extern "x86-interrupt" fn stack_segment_fault_handler(_stack_frame: &mut InterruptStackFrame, error_code: u64) {
+    println!("Stack segment fault!");
+}
+
+/// Invalid TSS
+extern "x86-interrupt" fn invalid_tss_handler(_stack_frame: &mut InterruptStackFrame, error_code: u64) {
+    println!("Invalid TSS!");
+}
+
+/// Segment not present
+extern "x86-interrupt" fn segment_not_present_handler(_stack_frame: &mut InterruptStackFrame, error_code: u64) {
+    panic!("Segment not present!");
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -157,6 +193,11 @@ extern "x86-interrupt" fn acpi_interrupt_handler(_stack_frame: &mut InterruptSta
 extern "x86-interrupt" fn rtc_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
     //TODO: Probably want to use this irq to increment a "tick" global variable
     //      This way, I can pretty easily implement a sleep function
+    use core::sync::atomic::Ordering;
+    crate::hardware::rtc::TICK_COUNT.fetch_add(1, Ordering::SeqCst);
+    // if crate::hardware::rtc::TICK_COUNT.load(Ordering::SeqCst) > 16384 {
+    //     debug!("hi 16384");
+    // }
     unsafe {
         apic::apic_send_eoi(0);
 
@@ -164,6 +205,11 @@ extern "x86-interrupt" fn rtc_interrupt_handler(_stack_frame: &mut InterruptStac
         outb(0x0C, 0x70);
         inb(0x71);
     }
+}
+
+extern "x86-interrupt" fn spurious_interrupt_handler(_stack_frame: &mut InterruptStackFrame) {
+    //TODO: Check ISR to make sure it's not a real interrupt
+    unsafe { apic::apic_send_eoi(0); }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

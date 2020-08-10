@@ -66,6 +66,7 @@ test-timeout = 300                  # in seconds
 run-args = [
     "-m", "256M",
     "-M", "q35",
+    "+apic",
 
     "-smp", "4",
 ]

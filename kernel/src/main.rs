@@ -102,6 +102,10 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
     kernel::interrupts::initialize_apic();
     x86_64::instructions::interrupts::enable();
 
+    debug!("hi");
+    kernel::hardware::rtc::sleep(2.0);
+    debug!("hi 2 seconds later :D");
+
     #[cfg(test)]
     test_main();
 

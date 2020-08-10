@@ -7,7 +7,7 @@ use crate::memory::{memory_read_32, memory_write_32};
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // APIC
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-const APIC_ADDRESS: u64 = 0xfee00000; //TODO: Get this from ACPI table although it shouldn't change
+const APIC_ADDRESS: u64 = 0xFEE00000; //TODO: Get this from ACPI table although it shouldn't change
 
 pub fn get_apic_address(apic_id: u8) -> u64 {
     APIC_ADDRESS + 0x10 * (apic_id as u64)
@@ -35,10 +35,11 @@ pub unsafe fn disable_pic() {
     outb(0xff, 0xa1);
 }
 
-pub unsafe fn enable_apic() {
-    let mut val = memory_read_32(0xfee000f0);
+pub unsafe fn enable_apic(apic_id: u8) {
+    let apic_addr = get_apic_address(apic_id);
+    let mut val = memory_read_32(apic_addr + 0xF0);
     val |= (1<<8);
-    memory_write_32(0xfee000f0, val);
+    memory_write_32(apic_addr + 0xF0, val);
 }
 
 pub unsafe fn apic_send_eoi(apic_id: u8) {
@@ -46,13 +47,28 @@ pub unsafe fn apic_send_eoi(apic_id: u8) {
     memory_write_32(apic_addr + 0xB0, 0);
 }
 
-/*
 pub unsafe fn apic_set_timer(apic_id: u8) {
-    memory_write_32(APIC_REGISTER_TIMER_DIV, 0x3); //0x3 = 16, divider
+    trace!("poggers");
+    let apic_addr = get_apic_address(apic_id);
 
-    //Sleep or something idk
+    memory_write_32(apic_addr + 0x3E0, 0x3); //0x3 = 011 = 16, divider
+
+    trace!("hi");
+
+    memory_write_32(apic_addr + 0x320, 0x20020); //Enable timer, set periodic mode, set vector to 0x20 = 32
+    memory_write_32(apic_addr + 0x380, 0x0); //Reset timer to -1
+    crate::hardware::rtc::sleep(0.01); //Sleep for 10ms
+    memory_write_32(apic_addr + 0x320, 0x10020); //Stop the timer
+
+    let ticks = memory_read_32(apic_addr + 0x390);
+
+    trace!("apic timer ticks in 10ms");
+    trace!("{}", ticks);
+
+    // memory_write_32(apic_addr + 0x320, 32 | 0x20000);
+    // memory_write_32(apic_addr + 0x3E0, 0x3);
+    // memory_write_32(apic_addr + 0x380, ticks);
 }
-*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // IOAPIC

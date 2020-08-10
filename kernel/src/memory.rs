@@ -224,7 +224,7 @@ lazy_static! {
 }
 
 use core::sync::atomic::{AtomicU64, Ordering};
-static PHYSICAL_MEMORY_OFFSET: AtomicU64 = AtomicU64::new(0);
+pub static PHYSICAL_MEMORY_OFFSET: AtomicU64 = AtomicU64::new(0);
 pub fn update_physical_memory_offset(phys_mem_offset: u64) {
     PHYSICAL_MEMORY_OFFSET.store(phys_mem_offset, Ordering::Relaxed);
 }
